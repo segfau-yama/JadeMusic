@@ -8,8 +8,12 @@ tokio = { version = "1.50.0", features = ["full"] }
 async-trait = "0.1"
 
 serenity = "0.12.5"
-songbird = { version = "0.5.0", features = ["receive", "builtin-queue"] }
+poise = "0.6.1"
+songbird = { git = "https://github.com/beerpsi-forks/songbird", branch = "davey", features = ["receive", "builtin-queue"] }
 reqwest = { version = "0.12", features = ["stream"] }
 dotenvy = "0.15"
+symphonia = { version = "0.5", features = ["aac", "mp3", "isomp4", "ogg", "vorbis", "flac", "wav", "mkv"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 ollama-rs = "0.3.4"

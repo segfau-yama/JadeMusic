@@ -85,7 +85,7 @@ pub async fn play(
             return Ok(());
         }
     };
-    handler_lock.lock().await.play_input(track.input);
+    handler_lock.lock().await.enqueue_input(track.input).await;
 
     ctx.say(format!("再生中: {}", track.title)).await?;
     Ok(())
