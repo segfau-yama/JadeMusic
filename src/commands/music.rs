@@ -6,12 +6,14 @@ use crate::{Error, Context};
     guild_only
 )]
 pub async fn music(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.defer().await?;
     ctx.say("利用可能なサブコマンド: play, skip, join, leave").await?;
     Ok(())
 }
 
 #[poise::command(slash_command, guild_only)]
 pub async fn join(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.defer().await?;
     let guild_id = ctx.guild_id().ok_or("ギルド外では使えません")?;
 
     let channel_id = ctx
@@ -33,6 +35,7 @@ pub async fn join(ctx: Context<'_>) -> Result<(), Error> {
 
 #[poise::command(slash_command, guild_only)]
 pub async fn leave(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.defer().await?;
     let guild_id = ctx.guild_id().ok_or("ギルド外では使えません")?;
 
     let manager = songbird::get(ctx.serenity_context())
@@ -52,9 +55,10 @@ pub async fn leave(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(slash_command, guild_only)]
 pub async fn play(
     ctx: Context<'_>,
-    #[description = "再生するURL (YouTube / ニコニコ動画 / Spotify)"] 
+    #[description = "再生するURL (YouTube / ニコニコ動画 / Spotify)"]
     url: String,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
     let guild_id = ctx.guild_id().ok_or("ギルド外では使えません")?;
 
     let channel_id = ctx
@@ -74,21 +78,22 @@ pub async fn play(
         None => manager.join(guild_id, channel_id).await?,
     };
 
-    let input = match crate::services::music::resolve(&url) {
-        Ok(input) => input,
+    let track = match crate::services::music::resolve(&url).await {
+        Ok(track) => track,
         Err(e) => {
             ctx.say(format!("再生できませんでした: {e}")).await?;
             return Ok(());
         }
     };
-    handler_lock.lock().await.enqueue_input(input).await;
+    handler_lock.lock().await.play_input(track.input);
 
-    ctx.say(format!("キューに追加しました: {url}")).await?;
+    ctx.say(format!("再生中: {}", track.title)).await?;
     Ok(())
 }
 
 #[poise::command(slash_command, guild_only)]
 pub async fn skip(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.defer().await?;
     let guild_id = ctx.guild_id().ok_or("ギルド外では使えません")?;
 
     let manager = songbird::get(ctx.serenity_context())

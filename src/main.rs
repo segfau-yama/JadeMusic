@@ -6,7 +6,6 @@ mod commands;
 mod services;
 use commands::music::music;
 use commands::chat::chat;
-use commands::notify::notify;
 use commands::record::record;
 
 pub struct Data {}
@@ -16,6 +15,8 @@ pub type Context<'a> = poise::Context<'a, Data, Error>;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    let _ = dotenvy::dotenv();
+
     let token = std::env::var("DISCORD_TOKEN")
         .expect("Missing DISCORD_TOKEN");
 
@@ -28,7 +29,6 @@ async fn main() -> Result<(), Error> {
             commands: vec![
                 music(),
                 chat(),
-                notify(),
                 record(),
             ],
             ..Default::default()
