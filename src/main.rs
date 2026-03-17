@@ -1,21 +1,24 @@
 use poise::serenity_prelude as serenity;
+use reqwest::Client;
 
 use songbird::SerenityInit;
 
 mod commands;
 mod services;
 use commands::music::music;
-use commands::chat::chat;
-use commands::record::record;
 
-pub struct Data {}
+use dotenv::dotenv;
+
+pub struct Data {
+    pub http_client: Client,
+}
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let _ = dotenvy::dotenv();
+    dotenv().ok();
 
     let token = std::env::var("DISCORD_TOKEN")
         .expect("Missing DISCORD_TOKEN");
@@ -28,19 +31,18 @@ async fn main() -> Result<(), Error> {
         .options(poise::FrameworkOptions {
             commands: vec![
                 music(),
-                chat(),
-                record(),
             ],
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
-                println!("Bot connected");
                 poise::builtins::register_globally(
                     ctx,
                     &framework.options().commands
                 ).await?;
-                Ok(Data {})
+                Ok(Data {
+                    http_client: Client::new(),
+                })
             })
         })
         .build();
