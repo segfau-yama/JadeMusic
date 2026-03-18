@@ -1,62 +1,32 @@
-// use reqwest::Client;
-// use songbird::input::{Compose, Input, YoutubeDl};
-// type BoxError = Box<dyn std::error::Error + Send + Sync>;
 
-// pub struct ResolvedTrack {
-//     pub input: Input,
-//     pub title: String,
-// }
+// use poise::serenity_prelude::CreateEmbed;
+// use songbird::tracks::TrackQueue;
 
-// pub async fn resolve(url: &str, client: Client) -> Result<ResolvedTrack, BoxError> {
-//     let query = url.trim();
-//     if query.is_empty() {
-//         return Err("URLまたは検索クエリを入力してください".into());
+// pub async fn show_playlist(tracks: TrackQueue) -> CreateEmbed {
+//     let max_show = 15usize;
+//     let mut lines = Vec::new();
+
+//     for (i, handle) in tracks.iter().take(max_show).enumerate() {
+//         let status = if i == 0 { "再生中" } else { "待機" };
+//         let data = handle.data::<TrackData>();
+//         let url = data
+//             .source_url
+//             .clone()
+//             .unwrap_or_else(|| "URL不明".to_string());
+//         let duration = format_duration(data.duration);
+//         let line = if let Some(d) = duration {
+//             format!("{}. [{}] {} ({})", i + 1, status, url, d)
+//         } else {
+//             format!("{}. [{}] {}", i + 1, status, url)
+//         };
+//         lines.push(line);
 //     }
 
-//     let mut args: Vec<String> = Vec::new();
-
-//     // 安定構成: --cookies cookies.txt --js-runtime node
-//     let cookies_file = std::env::var("YTDL_COOKIES")
-//         .ok()
-//         .filter(|s| !s.trim().is_empty())
-//         .unwrap_or_else(|| "cookies.txt".to_string());
-//     args.extend(["--cookies".to_string(), cookies_file]);
-//     args.extend(["--js-runtime".to_string(), "node".to_string()]);
-
-//     let do_search = !query.starts_with("http://") && !query.starts_with("https://");
-
-//     let mut source: YoutubeDl<'static> = if do_search {
-//         YoutubeDl::new_search(client, query.to_string())
-//     } else {
-//         YoutubeDl::new(client, query.to_string())
+//     if tracks.len() > max_show {
+//         lines.push(format!("...他 {} 件", tracks.len() - max_show));
 //     }
-//     .user_args(args);
 
-//     let metadata = source
-//         .aux_metadata()
-//         .await
-//         .map_err(|e| {
-//             let msg = e.to_string();
-//             if msg.contains("could not find executable 'yt-dlp' on path")
-//                 || msg.contains("No such file or directory")
-//             {
-//                 BoxError::from("yt-dlp が見つかりません。音楽再生には `yt-dlp` のインストールが必要です。")
-//             } else if msg.contains("Sign in to confirm you're not a bot") {
-//                 BoxError::from(
-//                     "YouTube の bot 確認でブロックされました。cookies.txt を再エクスポートするか、`YTDL_COOKIES=<パス>` を設定してください。",
-//                 )
-//             } else {
-//                 BoxError::from(format!("yt-dlp から音源情報を取得できませんでした: {msg}"))
-//             }
-//         })?;
-
-//     let title = metadata
-//         .track
-//         .or(metadata.title)
-//         .unwrap_or_else(|| query.to_string());
-
-//     let input = Input::from(source);
-
-//     Ok(ResolvedTrack { input, title })
+//     CreateEmbed::default()
+//         .title(format!("再生キュー: {} 件", tracks.len()))
+//         .description(lines.join("\n"))
 // }
-

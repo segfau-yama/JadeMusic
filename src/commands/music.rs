@@ -4,6 +4,8 @@ use songbird::input::YoutubeDl;
 use songbird::tracks::Track;
 use std::sync::Arc;
 
+use dotenv::dotenv;
+
 #[derive(Clone, Debug, Default)]
 struct TrackData {
     source_url: Option<String>,
@@ -109,8 +111,11 @@ pub async fn play(
 
     let mut handler = handler_lock.lock().await;
 
+    dotenv().ok();
+    let browser = std::env::var("BROWSER").expect("BROWSER environment variable not set");
+
     let extra_args = vec![
-        "--cookies-from-browser".to_string(), "chromium".to_string(),
+        "--cookies-from-browser".to_string(), browser,
         "--js-runtime".to_string(), "node".to_string(),
     ];
 
