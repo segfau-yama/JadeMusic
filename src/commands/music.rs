@@ -116,8 +116,8 @@ pub async fn play(
     let cookies = std::env::var("YTDLP_COOKIES").expect("YTDLP_COOKIES environment variable not set");
 
     let extra_args = vec![
-        "--cookies-from-browser".to_string(), browser,
         "--cookies".to_string(), cookies,
+        "--cookies-from-browser".to_string(), browser,
         "--js-runtime".to_string(), "deno".to_string(),
     ];
 
