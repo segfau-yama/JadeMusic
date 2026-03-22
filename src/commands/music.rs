@@ -1,23 +1,11 @@
 use crate::{Error, Context};
+use crate::services::music::{TrackData, format_duration, build_queue_embed};
 use rand::seq::SliceRandom;
 use songbird::input::YoutubeDl;
 use songbird::tracks::Track;
 use std::sync::Arc;
 
 use dotenv::dotenv;
-
-#[derive(Clone, Debug, Default)]
-struct TrackData {
-    source_url: Option<String>,
-    duration: Option<std::time::Duration>,
-}
-
-fn format_duration(duration: Option<std::time::Duration>) -> Option<String> {
-    let total = duration?.as_secs();
-    let minutes = total / 60;
-    let seconds = total % 60;
-    Some(format!("{minutes}:{seconds:02}"))
-}
 
 fn check_msg<T, E: std::fmt::Debug>(result: Result<T, E>) {
     if let Err(why) = result {
@@ -84,13 +72,11 @@ pub async fn play(
 
     let guild_id = ctx.guild_id().unwrap();
 
-    // poise では ctx.data() が &Data を直接返す
     let http_client = ctx.data().http_client.clone();
 
-    // songbird::get には &serenity::Context が必要
     let manager = songbird::get(ctx.serenity_context())
         .await
-        .expect("Songbird Voice client placed in at initialisation.")
+        .unwrap()
         .clone();
 
     let handler_lock = if let Some(existing) = manager.get(guild_id) {
@@ -129,16 +115,29 @@ pub async fn play(
     .user_args(extra_args);
     let mut input: songbird::input::Input = src.into();
     let aux = input.aux_metadata().await.ok();
-    let track = Track::new_with_data(
-        input,
-        Arc::new(TrackData {
-            source_url: aux.as_ref().and_then(|m| m.source_url.clone()),
-            duration: aux.as_ref().and_then(|m| m.duration),
-        }),
-    );
+    let track_data = Arc::new(TrackData {
+        title: aux.as_ref().and_then(|m| m.title.clone()),
+        source_url: aux.as_ref().and_then(|m| m.source_url.clone()),
+        duration: aux.as_ref().and_then(|m| m.duration),
+    });
+    let track = Track::new_with_data(input, track_data.clone());
     let _ = handler.enqueue(track).await;
 
-    check_msg(ctx.say("Playing song").await);
+    let title = track_data
+        .title
+        .clone()
+        .unwrap_or_else(|| "不明なタイトル".to_string());
+    let mut embed = poise::serenity_prelude::CreateEmbed::default()
+        .title("再生キューに追加しました")
+        .field("タイトル", &title, false);
+    if let Some(url) = &track_data.source_url {
+        embed = embed.url(url);
+        embed = embed.field("URL", url, false);
+    }
+    if let Some(d) = format_duration(track_data.duration) {
+        embed = embed.field("再生時間", d, true);
+    }
+    check_msg(ctx.send(poise::CreateReply::default().embed(embed)).await);
     Ok(())
 }
 
@@ -159,8 +158,6 @@ pub async fn skip(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-// TODO: Tier2 shuffleコマンドの実装
-// 再生キューをシャッフルするコマンド
 #[poise::command(slash_command, guild_only)]
 pub async fn shuffle(ctx: Context<'_>) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap();
@@ -191,15 +188,14 @@ pub async fn shuffle(ctx: Context<'_>) -> Result<(), Error> {
         }
     });
 
-    check_msg(ctx.say(format!("待機キューをシャッフルしました ({} 件)", len - 1)).await);
+    let tracks = queue.current_queue();
+    let embed = build_queue_embed(&tracks);
+    check_msg(ctx.send(poise::CreateReply::default().embed(embed)).await);
     Ok(())
 }
 
-// TODO: Tier1 listコマンドの実装
-// 再生キューの内容を表示するコマンド
 #[poise::command(slash_command, guild_only)]
 pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
-
     let guild_id = ctx.guild_id().unwrap();
 
     let manager = songbird::get(ctx.serenity_context())
@@ -219,38 +215,11 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
         return Ok(());
     }
 
-    let max_show = 15usize;
-    let mut lines = Vec::new();
-
-    for (i, handle) in tracks.iter().take(max_show).enumerate() {
-        let status = if i == 0 { "再生中" } else { "待機" };
-        let data = handle.data::<TrackData>();
-        let url = data
-            .source_url
-            .clone()
-            .unwrap_or_else(|| "URL不明".to_string());
-        let duration = format_duration(data.duration);
-        let line = if let Some(d) = duration {
-            format!("{}. [{}] {} ({})", i + 1, status, url, d)
-        } else {
-            format!("{}. [{}] {}", i + 1, status, url)
-        };
-        lines.push(line);
-    }
-
-    if tracks.len() > max_show {
-        lines.push(format!("...他 {} 件", tracks.len() - max_show));
-    }
-
-    let embed = poise::serenity_prelude::CreateEmbed::default()
-        .title(format!("再生キュー: {} 件", tracks.len()))
-        .description(lines.join("\n"));
+    let embed = build_queue_embed(&tracks);
     check_msg(ctx.send(poise::CreateReply::default().embed(embed)).await);
     Ok(())
 }
 
-// TODO: Tier1 deleteコマンドの実装
-// 再生キューの特定の曲を削除するコマンド
 #[poise::command(slash_command, guild_only)]
 pub async fn delete(
     ctx: Context<'_>,
