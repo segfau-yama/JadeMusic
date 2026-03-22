@@ -36,11 +36,11 @@ pub async fn music(_ctx: Context<'_>) -> Result<(), Error> {
 
 #[poise::command(slash_command, guild_only)]
 pub async fn join(ctx: Context<'_>) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().ok_or("ギルド外では使えません")?;
+    let guild_id = ctx.guild_id().unwrap();
 
     let channel_id = ctx
         .guild()
-        .ok_or("ギルド情報を取得できませんでした")?
+        .unwrap()
         .voice_states
         .get(&ctx.author().id)
         .and_then(|vs| vs.channel_id)
@@ -48,7 +48,7 @@ pub async fn join(ctx: Context<'_>) -> Result<(), Error> {
 
     let manager = songbird::get(ctx.serenity_context())
         .await
-        .ok_or("Songbird が初期化されていません")?;
+        .unwrap();
 
     manager.join(guild_id, channel_id).await?;
     check_msg(ctx.say("ボイスチャンネルに参加しました").await);
@@ -57,11 +57,11 @@ pub async fn join(ctx: Context<'_>) -> Result<(), Error> {
 
 #[poise::command(slash_command, guild_only)]
 pub async fn leave(ctx: Context<'_>) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().ok_or("ギルド外では使えません")?;
+    let guild_id = ctx.guild_id().unwrap();
 
     let manager = songbird::get(ctx.serenity_context())
         .await
-        .ok_or("Songbird が初期化されていません")?;
+        .unwrap();
 
     if manager.get(guild_id).is_none() {
         check_msg(ctx.say("ボイスチャンネルに参加していません").await);
@@ -82,7 +82,7 @@ pub async fn play(
     ctx.defer().await?;
     let do_search = !url.starts_with("http");
 
-    let guild_id = ctx.guild_id().ok_or("ギルド外では使えません")?;
+    let guild_id = ctx.guild_id().unwrap();
 
     // poise では ctx.data() が &Data を直接返す
     let http_client = ctx.data().http_client.clone();
@@ -98,7 +98,7 @@ pub async fn play(
     } else {
         let channel_id = ctx
             .guild()
-            .ok_or("ギルド情報を取得できませんでした")?
+            .unwrap()
             .voice_states
             .get(&ctx.author().id)
             .and_then(|vs| vs.channel_id)
@@ -144,11 +144,11 @@ pub async fn play(
 
 #[poise::command(slash_command, guild_only)]
 pub async fn skip(ctx: Context<'_>) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().ok_or("ギルド外では使えません")?;
+    let guild_id = ctx.guild_id().unwrap();
 
     let manager = songbird::get(ctx.serenity_context())
         .await
-        .ok_or("Songbird が初期化されていません")?;
+        .unwrap();
 
     let handler_lock = manager
         .get(guild_id)
@@ -163,11 +163,11 @@ pub async fn skip(ctx: Context<'_>) -> Result<(), Error> {
 // 再生キューをシャッフルするコマンド
 #[poise::command(slash_command, guild_only)]
 pub async fn shuffle(ctx: Context<'_>) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().ok_or("ギルド外では使えません")?;
+    let guild_id = ctx.guild_id().unwrap();
 
     let manager = songbird::get(ctx.serenity_context())
         .await
-        .ok_or("Songbird が初期化されていません")?;
+        .unwrap();
 
     let handler_lock = manager
         .get(guild_id)
@@ -200,11 +200,11 @@ pub async fn shuffle(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(slash_command, guild_only)]
 pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
 
-    let guild_id = ctx.guild_id().ok_or("ギルド外では使えません")?;
+    let guild_id = ctx.guild_id().unwrap();
 
     let manager = songbird::get(ctx.serenity_context())
         .await
-        .ok_or("Songbird が初期化されていません")?;
+        .unwrap();
 
     let handler_lock = manager
         .get(guild_id)
@@ -257,11 +257,11 @@ pub async fn delete(
     #[description = "削除する曲番号 (list の 1 始まり)"] index: usize,
 ) -> Result<(), Error> {
 
-    let guild_id = ctx.guild_id().ok_or("ギルド外では使えません")?;
+    let guild_id = ctx.guild_id().unwrap();
 
     let manager = songbird::get(ctx.serenity_context())
         .await
-        .ok_or("Songbird が初期化されていません")?;
+        .unwrap();
 
     let handler_lock = manager
         .get(guild_id)
