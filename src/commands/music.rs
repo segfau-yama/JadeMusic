@@ -38,7 +38,13 @@ pub async fn join(ctx: Context<'_>) -> Result<(), Error> {
         .await
         .unwrap();
 
-    manager.join(guild_id, channel_id).await?;
+    let handler_lock = manager.join(guild_id, channel_id).await?;
+    crate::events::register(
+        &handler_lock,
+        manager,
+        guild_id,
+        ctx.serenity_context().cache.clone(),
+    ).await;
     check_msg(ctx.say("ボイスチャンネルに参加しました").await);
     Ok(())
 }
@@ -89,10 +95,14 @@ pub async fn play(
             .get(&ctx.author().id)
             .and_then(|vs| vs.channel_id)
             .ok_or("先にボイスチャンネルに参加してください")?;
-        manager.join(guild_id, channel_id).await?;
-        manager
-            .get(guild_id)
-            .ok_or("ボイスチャンネルに参加できませんでした")?
+        let joined = manager.join(guild_id, channel_id).await?;
+        crate::events::register(
+            &joined,
+            manager.clone(),
+            guild_id,
+            ctx.serenity_context().cache.clone(),
+        ).await;
+        joined
     };
 
     let mut handler = handler_lock.lock().await;

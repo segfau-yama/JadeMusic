@@ -33,9 +33,6 @@ async fn main() -> Result<(), Error> {
             commands: vec![
                 music(),
             ],
-            event_handler: |ctx, event, framework, data| {
-                Box::pin(events::event_handler(ctx, event, framework, data))
-            },
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
