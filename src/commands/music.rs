@@ -23,7 +23,10 @@ pub async fn music(_ctx: Context<'_>) -> Result<(), Error> {
 }
 
 #[poise::command(slash_command, guild_only)]
-pub async fn join(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn join(
+    ctx: Context<'_>,
+    #[description = "ボイスチャンネルに参加する。再生中の曲がある場合はそのまま続行する。"]
+) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap();
 
     let channel_id = ctx
@@ -70,7 +73,7 @@ pub async fn leave(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(slash_command, guild_only)]
 pub async fn play(
     ctx: Context<'_>,
-    #[description = "再生するURL (YouTube / ニコニコ動画 / etc…)"]
+    #[description = "再生するURL (YouTube etc…)"]
     url: String,
 ) -> Result<(), Error> {
     ctx.defer().await?;
@@ -152,7 +155,10 @@ pub async fn play(
 }
 
 #[poise::command(slash_command, guild_only)]
-pub async fn skip(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn skip(
+    ctx: Context<'_>,
+    #[description = "再生中の曲をスキップする。次の曲があれば再生を開始する。"]
+) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap();
 
     let manager = songbird::get(ctx.serenity_context())
@@ -169,7 +175,10 @@ pub async fn skip(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 #[poise::command(slash_command, guild_only)]
-pub async fn shuffle(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn shuffle(
+    ctx: Context<'_>,
+    #[description = "再生キューをシャッフルする。再生中の曲はそのまま続行する。"]
+) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap();
 
     let manager = songbird::get(ctx.serenity_context())
@@ -205,7 +214,10 @@ pub async fn shuffle(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 #[poise::command(slash_command, guild_only)]
-pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn list(
+    ctx: Context<'_>,
+    #[description = "再生キューの曲一覧を表示する。"]
+) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap();
 
     let manager = songbird::get(ctx.serenity_context())
