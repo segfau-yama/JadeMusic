@@ -112,6 +112,7 @@ pub async fn play(
 
     let extra_args = vec![
         "--cookies".to_string(), cookies,
+        "--user-agent".to_string(), "Mozilla/5.0 (X11; Linux x86_64; rv:135.0) Gecko/20100101 Firefox/135.0".to_string(),
         "--remote-components".to_string(), "ejs:github".to_string(),
         "--js-runtime".to_string(), "deno".to_string(),
     ];
