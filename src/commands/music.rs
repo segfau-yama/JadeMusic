@@ -1,31 +1,23 @@
 use crate::{Error, Context};
-use crate::services::music::{TrackData, format_duration, build_queue_embed};
+use crate::services::music::{TrackData, format_duration, build_queue_embed, check_msg, get_handler_lock};
 use rand::seq::SliceRandom;
 use songbird::input::YoutubeDl;
 use songbird::tracks::Track;
 use std::sync::Arc;
 
-use dotenv::dotenv;
-
-fn check_msg<T, E: std::fmt::Debug>(result: Result<T, E>) {
-    if let Err(why) = result {
-        println!("Error sending message: {why:?}");
-    }
-}
-
 #[poise::command(
     slash_command,
-    subcommands("play", "skip", "join", "leave", "shuffle", "list", "delete"),
+    subcommands("play", "skip", "_join", "leave", "shuffle", "list", "delete"),
     guild_only
 )]
 pub async fn music(_ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-#[poise::command(slash_command, guild_only)]
-pub async fn join(
+#[poise::command(slash_command, guild_only, rename = "join")]
+/// ボイスチャンネルに参加する。再生中の曲がある場合は続行する。
+pub async fn _join(
     ctx: Context<'_>,
-    #[description = "ボイスチャンネルに参加する。再生中の曲がある場合はそのまま続行する。"]
 ) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap();
 
@@ -53,7 +45,10 @@ pub async fn join(
 }
 
 #[poise::command(slash_command, guild_only)]
-pub async fn leave(ctx: Context<'_>) -> Result<(), Error> {
+/// ボイスチャンネルから退出する。再生中の曲がある場合は停止する。
+pub async fn leave(
+    ctx: Context<'_>,
+) -> Result<(), Error> {
     let guild_id = ctx.guild_id().unwrap();
 
     let manager = songbird::get(ctx.serenity_context())
@@ -71,16 +66,15 @@ pub async fn leave(ctx: Context<'_>) -> Result<(), Error> {
 }
 
 #[poise::command(slash_command, guild_only)]
+/// 曲を再生キューに追加する。
 pub async fn play(
     ctx: Context<'_>,
     #[description = "再生するURL (YouTube etc…)"]
     url: String,
 ) -> Result<(), Error> {
     ctx.defer().await?;
-    let do_search = !url.starts_with("http");
 
     let guild_id = ctx.guild_id().unwrap();
-
     let http_client = ctx.data().http_client.clone();
 
     let manager = songbird::get(ctx.serenity_context())
@@ -110,8 +104,7 @@ pub async fn play(
 
     let mut handler = handler_lock.lock().await;
 
-    dotenv().ok();
-    let cookies = std::env::var("YTDLP_COOKIES").expect("YTDLP_COOKIES environment variable not set");
+    let cookies = ctx.data().ytdlp_cookies.clone();
 
     let extra_args = vec![
         "--cookies".to_string(), cookies,
@@ -120,6 +113,7 @@ pub async fn play(
         "--js-runtime".to_string(), "deno".to_string(),
     ];
 
+    let do_search = !url.starts_with("http");
     let src = if do_search {
         YoutubeDl::new_search(http_client, url)
     } else {
@@ -155,19 +149,11 @@ pub async fn play(
 }
 
 #[poise::command(slash_command, guild_only)]
+/// 再生中の曲をスキップする。次の曲があれば再生を開始する。
 pub async fn skip(
     ctx: Context<'_>,
-    #[description = "再生中の曲をスキップする。次の曲があれば再生を開始する。"]
 ) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().unwrap();
-
-    let manager = songbird::get(ctx.serenity_context())
-        .await
-        .unwrap();
-
-    let handler_lock = manager
-        .get(guild_id)
-        .ok_or("ボイスチャンネルに参加していません")?;
+    let handler_lock = get_handler_lock(&ctx).await?;
 
     handler_lock.lock().await.queue().skip()?;
     check_msg(ctx.say("スキップしました").await);
@@ -175,19 +161,11 @@ pub async fn skip(
 }
 
 #[poise::command(slash_command, guild_only)]
+/// 再生キューをシャッフルする。再生中の曲はそのまま続行する。
 pub async fn shuffle(
     ctx: Context<'_>,
-    #[description = "再生キューをシャッフルする。再生中の曲はそのまま続行する。"]
 ) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().unwrap();
-
-    let manager = songbird::get(ctx.serenity_context())
-        .await
-        .unwrap();
-
-    let handler_lock = manager
-        .get(guild_id)
-        .ok_or("ボイスチャンネルに参加していません")?;
+    let handler_lock = get_handler_lock(&ctx).await?;
 
     let handler = handler_lock.lock().await;
     let queue = handler.queue();
@@ -214,19 +192,11 @@ pub async fn shuffle(
 }
 
 #[poise::command(slash_command, guild_only)]
+/// 再生キューの曲一覧を表示する。
 pub async fn list(
     ctx: Context<'_>,
-    #[description = "再生キューの曲一覧を表示する。"]
 ) -> Result<(), Error> {
-    let guild_id = ctx.guild_id().unwrap();
-
-    let manager = songbird::get(ctx.serenity_context())
-        .await
-        .unwrap();
-
-    let handler_lock = manager
-        .get(guild_id)
-        .ok_or("ボイスチャンネルに参加していません")?;
+    let handler_lock = get_handler_lock(&ctx).await?;
 
     let handler = handler_lock.lock().await;
     let queue = handler.queue();
@@ -243,20 +213,12 @@ pub async fn list(
 }
 
 #[poise::command(slash_command, guild_only)]
+/// 再生キューから指定した曲を削除する。
 pub async fn delete(
     ctx: Context<'_>,
     #[description = "削除する曲番号 (list の 1 始まり)"] index: usize,
 ) -> Result<(), Error> {
-
-    let guild_id = ctx.guild_id().unwrap();
-
-    let manager = songbird::get(ctx.serenity_context())
-        .await
-        .unwrap();
-
-    let handler_lock = manager
-        .get(guild_id)
-        .ok_or("ボイスチャンネルに参加していません")?;
+    let handler_lock = get_handler_lock(&ctx).await?;
 
     let handler = handler_lock.lock().await;
     let queue = handler.queue();

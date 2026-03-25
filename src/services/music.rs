@@ -2,6 +2,25 @@ use poise::serenity_prelude::CreateEmbed;
 use songbird::tracks::TrackHandle;
 use songbird::Songbird;
 use poise::serenity_prelude::GuildId;
+use std::sync::Arc;
+
+use crate::{Context, Error};
+
+pub fn check_msg<T, E: std::fmt::Debug>(result: Result<T, E>) {
+    if let Err(why) = result {
+        println!("Error sending message: {why:?}");
+    }
+}
+
+pub async fn get_handler_lock(
+    ctx: &Context<'_>,
+) -> Result<Arc<tokio::sync::Mutex<songbird::Call>>, Error> {
+    let guild_id = ctx.guild_id().unwrap();
+    let manager = songbird::get(ctx.serenity_context()).await.unwrap();
+    manager
+        .get(guild_id)
+        .ok_or_else(|| "ボイスチャンネルに参加していません".into())
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct TrackData {

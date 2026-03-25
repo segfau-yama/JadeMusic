@@ -12,6 +12,7 @@ use dotenv::dotenv;
 
 pub struct Data {
     pub http_client: Client,
+    pub ytdlp_cookies: String,
 }
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -23,9 +24,10 @@ async fn main() -> Result<(), Error> {
 
     let token = std::env::var("DISCORD_TOKEN")
         .expect("Missing DISCORD_TOKEN");
+    let cookies = std::env::var("YTDLP_COOKIES")
+        .expect("YTDLP_COOKIES environment variable not set");
 
     let intents = serenity::GatewayIntents::non_privileged()
-        | serenity::GatewayIntents::MESSAGE_CONTENT
         | serenity::GatewayIntents::GUILD_VOICE_STATES;
 
     let framework = poise::Framework::builder()
@@ -43,6 +45,7 @@ async fn main() -> Result<(), Error> {
                 ).await?;
                 Ok(Data {
                     http_client: Client::new(),
+                    ytdlp_cookies: cookies,
                 })
             })
         })
