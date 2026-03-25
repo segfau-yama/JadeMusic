@@ -105,7 +105,8 @@ pub async fn play(
     let mut handler = handler_lock.lock().await;
 
     let cookies = ctx.data().ytdlp_cookies.clone();
-
+    println!("Using ytdlp cookies: {}", cookies);
+    println!("URL: {}", url);
     let extra_args = vec![
         "--cookies".to_string(), cookies,
         "--user-agent".to_string(), "Mozilla/5.0 (X11; Linux x86_64; rv:135.0) Gecko/20100101 Firefox/135.0".to_string(),
