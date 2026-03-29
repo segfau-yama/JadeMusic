@@ -69,7 +69,6 @@ pub async fn leave(
 /// 曲を再生キューに追加する。
 pub async fn play(
     ctx: Context<'_>,
-    #[description = "再生するURL (YouTube etc…)"]
     url: String,
 ) -> Result<(), Error> {
     ctx.defer().await?;
@@ -109,6 +108,7 @@ pub async fn play(
     println!("URL: {}", url);
     let extra_args = vec![
         "--cookies".to_string(), cookies,
+        "--format".to_string(), "bestaudio".to_string(),
         "--user-agent".to_string(), "Mozilla/5.0 (X11; Linux x86_64; rv:135.0) Gecko/20100101 Firefox/135.0".to_string(),
         "--remote-components".to_string(), "ejs:github".to_string(),
         "--js-runtime".to_string(), "deno".to_string(),
@@ -217,7 +217,7 @@ pub async fn list(
 /// 再生キューから指定した曲を削除する。
 pub async fn delete(
     ctx: Context<'_>,
-    #[description = "削除する曲番号 (list の 1 始まり)"] index: usize,
+    index: usize,
 ) -> Result<(), Error> {
     let handler_lock = get_handler_lock(&ctx).await?;
 
