@@ -1,5 +1,5 @@
 use crate::{Error, Context};
-use crate::services::music::{TrackData, format_duration, build_queue_embed, check_msg, get_handler_lock};
+use crate::services::{TrackData, format_duration, build_queue_embed, check_msg, get_handler_lock};
 use rand::seq::SliceRandom;
 use songbird::input::YoutubeDl;
 use songbird::tracks::Track;

@@ -6,7 +6,7 @@ use songbird::SerenityInit;
 mod commands;
 mod services;
 mod events;
-use commands::music::music;
+use commands::music;
 
 use dotenv::dotenv;
 
