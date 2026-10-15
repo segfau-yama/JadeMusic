@@ -47,35 +47,20 @@ impl VoiceEventHandler for VoiceHandler {
 
             // 同チャンネルの誰かが切断した ─ 人間がいなくなったら自動退出
             EventContext::ClientDisconnect(_) => {
-                let handler_lock = match self.manager.get(self.guild_id) {
-                    Some(h) => h,
-                    None => return None,
-                };
+                let handler_lock = self.manager.get(self.guild_id)?;
                 let bot_channel_id = {
                     let handler = handler_lock.lock().await;
                     handler.current_channel()
                 };
-                let bot_channel_id = match bot_channel_id {
-                    Some(id) => id,
-                    None => return None,
+                let bot_channel_id = bot_channel_id?;
+                let has_humans = {
+                    let guild = self.cache.guild(self.guild_id)?;
+                    guild.voice_states.values().any(|vs| {
+                        vs.user_id != self.bot_id
+                            && vs.channel_id.is_some_and(|ch| ch.get() == bot_channel_id.0.get())
+                    })
                 };
-                let human_count = {
-                    let guild = match self.cache.guild(self.guild_id) {
-                        Some(g) => g,
-                        None => return None,
-                    };
-                    guild
-                        .voice_states
-                        .values()
-                        .filter(|vs| {
-                            vs.channel_id
-                                .map(|ch| ch.get() == bot_channel_id.0.get())
-                                .unwrap_or(false)
-                        })
-                        .filter(|vs| vs.user_id != self.bot_id)
-                        .count()
-                };
-                if human_count == 0 {
+                if !has_humans {
                     clear_queue(&self.manager, self.guild_id).await;
                     let _ = self.manager.remove(self.guild_id).await;
                 }

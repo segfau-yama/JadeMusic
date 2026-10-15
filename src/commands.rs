@@ -131,13 +131,10 @@ pub async fn play(
     let track = Track::new_with_data(input, track_data.clone());
     let _ = handler.enqueue(track).await;
 
-    let title = track_data
-        .title
-        .clone()
-        .unwrap_or_else(|| "不明なタイトル".to_string());
+    let title = track_data.title.as_deref().unwrap_or("不明なタイトル");
     let mut embed = poise::serenity_prelude::CreateEmbed::default()
         .title("再生キューに追加しました")
-        .field("タイトル", &title, false);
+        .field("タイトル", title, false);
     if let Some(url) = &track_data.source_url {
         embed = embed.url(url);
         embed = embed.field("URL", url, false);

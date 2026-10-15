@@ -45,9 +45,9 @@ pub fn build_queue_embed(tracks: &[TrackHandle]) -> CreateEmbed {
         let data = handle.data::<TrackData>();
         let title = data
             .title
-            .clone()
-            .or_else(|| data.source_url.clone())
-            .unwrap_or_else(|| "不明".to_string());
+            .as_deref()
+            .or(data.source_url.as_deref())
+            .unwrap_or("不明");
         let duration = format_duration(data.duration);
         let line = if let Some(d) = duration {
             format!("{}. [{}] {} ({})", i + 1, status, title, d)
