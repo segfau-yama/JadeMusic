@@ -1,5 +1,8 @@
 use crate::{Error, Context};
-use crate::services::{TrackData, format_duration, build_queue_embed, check_msg, get_handler_lock};
+use crate::services::{
+    TrackData, format_duration, build_queue_embed, check_msg, get_handler_lock,
+    is_youtube_mix, youtube_mix_tracks,
+};
 use rand::seq::SliceRandom;
 use songbird::input::YoutubeDl;
 use songbird::tracks::Track;
@@ -66,7 +69,7 @@ pub async fn leave(
 }
 
 #[poise::command(slash_command, guild_only)]
-/// 曲を再生キューに追加する。
+/// 曲またはYouTubeミックスを再生キューに追加する。
 pub async fn play(
     ctx: Context<'_>,
     url: String,
@@ -113,6 +116,30 @@ pub async fn play(
         "--remote-components".to_string(), "ejs:github".to_string(),
         "--js-runtime".to_string(), "deno".to_string(),
     ];
+
+    if is_youtube_mix(&url) {
+        // shortcut: ミックスは先頭50件まで, 継続追加が必要になったら再生終了時に補充する。
+        let tracks = youtube_mix_tracks(&url, &ctx.data().ytdlp_cookies, 50).await?;
+        let count = tracks.len();
+        {
+            let mut handler = handler_lock.lock().await;
+            for data in tracks {
+                let track_url = data.source_url.clone()
+                    .ok_or("ミックスの曲にURLがありません")?;
+                let input = YoutubeDl::new(http_client.clone(), track_url)
+                    .user_args(extra_args.clone());
+                let preload = data.duration
+                    .map(|d| d.saturating_sub(std::time::Duration::from_secs(5)));
+                let track = Track::new_with_data(input.into(), Arc::new(data));
+                // 取得済みの再生時間を使い、追加時の曲ごとのメタデータ再取得を避ける。
+                handler.enqueue_with_preload(track, preload);
+            }
+        }
+        check_msg(ctx.say(format!(
+            "ミックスリストの先頭50件から、重複・非公開を除いた{count}曲を再生キューに追加しました"
+        )).await);
+        return Ok(());
+    }
 
     let do_search = !url.starts_with("http");
     let src = if do_search {

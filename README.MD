@@ -97,10 +97,17 @@ cargo build --release --target x86_64-unknown-linux-musl
 
 | コマンド | 説明 |
 |---|---|
-| `/music play <url>` | URL を再生キューに追加（ボイスチャンネル未参加の場合は自動参加） |
+| `/music play <url>` | 曲を再生キューに追加。YouTube ミックスURLは先頭50件をまとめて追加（ボイスチャンネル未参加の場合は自動参加） |
 | `/music skip` | 再生中の曲をスキップ |
 | `/music list` | 再生キューの一覧を表示 |
 | `/music shuffle` | 再生キューをシャッフル（再生中の曲は除く） |
 | `/music delete <n>` | キューの n 番目の曲を削除 |
 | `/music join` | ボイスチャンネルに参加 |
 | `/music leave` | ボイスチャンネルから退出 |
+
+YouTube ミックス（`list=RD...` を含む YouTube / YouTube Music / youtu.be のURL）は、
+取得順にキューの末尾へ追加します。重複する動画と非公開動画は追加対象から除外します。
+[ミックスは曲が続く仕組み](https://support.google.com/youtube/answer/9011078?hl=ja)のため、
+1回のコマンドでは先頭50件を取得し、その後の自動補充は行いません。
+曲一覧の取得には設定済みの `YTDLP_COOKIES` を使用し、音声は各曲の再生時に取得します。
+通常のプレイリストURLや単曲URL、キーワード検索は従来どおりの動作です。
