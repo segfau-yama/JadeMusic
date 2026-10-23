@@ -101,13 +101,13 @@ pub async fn play(
         joined
     };
 
-    let mut handler = handler_lock.lock().await;
-
     let cookies = ctx.data().ytdlp_cookies.clone();
     println!("Using ytdlp cookies: {}", cookies);
     println!("URL: {}", url);
     let extra_args = vec![
         "--cookies".to_string(), cookies,
+        // メタデータを取得できても音源 URL が 403 になる形式を除外する。
+        "--check-formats".to_string(),
         "--format".to_string(), "bestaudio".to_string(),
         "--user-agent".to_string(), "Mozilla/5.0 (X11; Linux x86_64; rv:135.0) Gecko/20100101 Firefox/135.0".to_string(),
         "--remote-components".to_string(), "ejs:github".to_string(),
@@ -122,14 +122,14 @@ pub async fn play(
     }
     .user_args(extra_args);
     let mut input: songbird::input::Input = src.into();
-    let aux = input.aux_metadata().await.ok();
+    let aux = input.aux_metadata().await?;
     let track_data = Arc::new(TrackData {
-        title: aux.as_ref().and_then(|m| m.title.clone()),
-        source_url: aux.as_ref().and_then(|m| m.source_url.clone()),
-        duration: aux.as_ref().and_then(|m| m.duration),
+        title: aux.title,
+        source_url: aux.source_url,
+        duration: aux.duration,
     });
     let track = Track::new_with_data(input, track_data.clone());
-    let _ = handler.enqueue(track).await;
+    let _ = handler_lock.lock().await.enqueue(track).await;
 
     let title = track_data
         .title

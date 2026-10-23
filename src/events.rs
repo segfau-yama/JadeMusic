@@ -1,7 +1,8 @@
 use async_trait::async_trait;
 use poise::serenity_prelude as serenity;
 use songbird::{
-    events::{CoreEvent, Event, EventContext, EventHandler as VoiceEventHandler},
+    events::{CoreEvent, Event, EventContext, EventHandler as VoiceEventHandler, TrackEvent},
+    tracks::PlayMode,
     Call, Songbird,
 };
 use std::sync::Arc;
@@ -24,6 +25,7 @@ pub async fn register(
         bot_id,
     };
     let mut handler = handler_lock.lock().await;
+    handler.add_global_event(TrackEvent::Error.into(), evt.clone());
     handler.add_global_event(CoreEvent::DriverDisconnect.into(), evt.clone());
     handler.add_global_event(CoreEvent::ClientDisconnect.into(), evt);
 }
@@ -41,8 +43,17 @@ impl VoiceEventHandler for VoiceHandler {
     async fn act(&self, ctx: &EventContext<'_>) -> Option<Event> {
         match ctx {
             // ボットが切断された (強制退出・ネットワーク断など) のでキューを空にする
-            EventContext::DriverDisconnect(_) => {
+            EventContext::DriverDisconnect(data) => {
+                eprintln!("Voice disconnected: {:?}", data.reason);
                 clear_queue(&self.manager, self.guild_id).await;
+            }
+
+            EventContext::Track(tracks) => {
+                for (state, _) in *tracks {
+                    if let PlayMode::Errored(error) = &state.playing {
+                        eprintln!("Audio playback failed: {error}");
+                    }
+                }
             }
 
             // 同チャンネルの誰かが切断した ─ 人間がいなくなったら自動退出
